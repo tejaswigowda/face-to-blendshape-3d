@@ -515,7 +515,6 @@ FACE:
             const options = { binary: true, maxTextureSize: 2048, embedImages: true, truncateDrawRange: false };
             const exportGroup = new THREE.Group();
             exportGroup.add(this.faceMesh.clone());
-            if (this.headModel && this.headModel.visible) exportGroup.add(this.headModel.clone());
             exporter.parse(exportGroup, (result) => {
                 if (result instanceof ArrayBuffer) {
                     this.saveArrayBuffer(result, 'face-model-blendshapes.glb');
