@@ -26,7 +26,7 @@ export class FaceMeshGenerator {
     generateWithMorphTargets(landmarks, blendshapes, transformMatrix, textureCanvas) {
         this.geometry = new THREE.BufferGeometry();
         
-        // Sample skin color for external use (Head Model)
+        // Sample skin color for external use
         this.skinColor = this.sampleSkinColorFromTexture(textureCanvas);
         console.log('Sampled Skin Color:', this.skinColor);
         

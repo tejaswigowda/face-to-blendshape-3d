@@ -30,16 +30,13 @@ The exported GLB file contains:
 
 ## 🚀 Quick Start
 
+No build step. The site is plain static files in `docs/` (ES modules + an import map loading Three.js and MediaPipe from a CDN). Serve the folder with any static server:
+
 ```bash
-# Install dependencies
-npm install
-
-# Run development server
-npm run dev
-
-# Build for production
-npm run build
+python3 -m http.server 3000 --directory docs
 ```
+
+Then open http://localhost:3000.
 
 ## 📖 Usage
 
@@ -54,7 +51,6 @@ npm run build
 - **Three.js** - 3D rendering, geometry, and GLB export
 - **GLTFExporter** - Export to glTF/GLB format with morph targets
 - **Canvas API** - Texture extraction and processing
-- **Vite** - Build tool and dev server
 - **Vanilla JavaScript** - No framework dependencies
 
 ## 🎯 ARKit Blendshapes (Morph Targets)
@@ -85,11 +81,13 @@ All 52 ARKit blendshapes are included as morph targets:
 ## 🏗️ Architecture
 
 ```
-src/
-├── main.js                # Main application controller
-├── arkit-mapper.js        # MediaPipe → ARKit blendshape mapping
-├── face-mesh-generator.js # 3D mesh generation with morph targets
-└── texture-mapper.js      # Face texture extraction and UV mapping
+docs/
+├── index.html             # Static page + import map (no build step)
+└── js/
+    ├── main.js                # Main application controller
+    ├── arkit-mapper.js        # MediaPipe → ARKit blendshape mapping
+    ├── face-mesh-generator.js # 3D mesh generation with morph targets
+    └── texture-mapper.js      # Face texture extraction and UV mapping
 ```
 
 ### Key Components

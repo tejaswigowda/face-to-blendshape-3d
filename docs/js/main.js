@@ -1,12 +1,10 @@
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { FaceLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
 import { ARKitBlendshapeMapper } from './arkit-mapper.js';
 import { FaceMeshGenerator } from './face-mesh-generator.js';
 import { TextureMapper } from './texture-mapper.js';
-import headModelUrl from '../head.glb?url';
 
 class FaceToBlendshape3D {
     constructor() {
@@ -16,25 +14,12 @@ class FaceToBlendshape3D {
         this.renderer = null;
         this.controls = null;
         this.faceMesh = null;
-        this.headModel = null;
         this.blendshapes = {};
         this.currentImage = null;
         this.textureCanvas = null;
         
         // Debug parameters
         this.debugParams = {
-            head: {
-                scaleMultiplierX: 1.15,
-                scaleMultiplierY: 1.45,
-                scaleMultiplierZ: 1.45,
-                posOffsetX: 0,
-                posOffsetY: 0,
-                posOffsetZ: 0,
-                rotationX: 0,
-                rotationY: 0,
-                rotationZ: 0,
-                pushBackFactor: 0.40
-            },
             face: {
                 scaleX: 1.0,
                 scaleY: 1.0,
@@ -64,7 +49,7 @@ class FaceToBlendshape3D {
     async initMediaPipe() {
         try {
             const vision = await FilesetResolver.forVisionTasks(
-                'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+                'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.35/wasm'
             );
             this.faceLandmarker = await FaceLandmarker.createFromOptions(vision, {
                 baseOptions: {
@@ -118,66 +103,10 @@ class FaceToBlendshape3D {
         rightLight.position.set(5, 0, 0);
         this.scene.add(rightLight);
         
-        const loader = new GLTFLoader();
-        loader.load(headModelUrl, (gltf) => {
-            this.headModel = gltf.scene;
-            this.headModel.traverse((child) => {
-                if (child.isMesh) {
-                    const forcedMat = new THREE.MeshStandardMaterial({
-                        color: new THREE.Color(0.8, 0.6, 0.5),
-                        roughness: 0.6,
-                        metalness: 0.0,
-                        emissive: new THREE.Color(0.3, 0.2, 0.15),
-                        emissiveIntensity: 0.4,
-                        side: THREE.FrontSide,
-                        flatShading: false
-                    });
-                    child.material = forcedMat;
-                    child.castShadow = false;
-                    child.receiveShadow = false;
-                }
-            });
-            const box = new THREE.Box3().setFromObject(this.headModel);
-            const center = box.getCenter(new THREE.Vector3());
-            this.headModel.position.sub(center);
-            this.scene.add(this.headModel);
-            this.headModel.visible = false;
-        }, undefined, (error) => {
-            console.error('Error loading head model:', error);
-            this.showStatus('Failed to load head model.', 'error');
-        });
-        
         window.addEventListener('resize', () => this.onResize());
     }
     
     initDebugControls() {
-        // Head controls
-        const headSliders = {
-            scaleX: document.getElementById('headScaleXSlider'),
-            scaleY: document.getElementById('headScaleYSlider'),
-            scaleZ: document.getElementById('headScaleZSlider'),
-            posX: document.getElementById('headPosXSlider'),
-            posY: document.getElementById('headPosYSlider'),
-            posZ: document.getElementById('headPosZSlider'),
-            rotX: document.getElementById('headRotXSlider'),
-            rotY: document.getElementById('headRotYSlider'),
-            rotZ: document.getElementById('headRotZSlider'),
-            pushBack: document.getElementById('headPushBackSlider')
-        };
-        
-        const headValues = {
-            scaleX: document.getElementById('headScaleXValue'),
-            scaleY: document.getElementById('headScaleYValue'),
-            scaleZ: document.getElementById('headScaleZValue'),
-            posX: document.getElementById('headPosXValue'),
-            posY: document.getElementById('headPosYValue'),
-            posZ: document.getElementById('headPosZValue'),
-            rotX: document.getElementById('headRotXValue'),
-            rotY: document.getElementById('headRotYValue'),
-            rotZ: document.getElementById('headRotZValue'),
-            pushBack: document.getElementById('headPushBackValue')
-        };
-        
         // Face controls
         const faceSliders = {
             scaleX: document.getElementById('faceScaleXSlider'),
@@ -203,18 +132,6 @@ class FaceToBlendshape3D {
             rotZ: document.getElementById('faceRotZValue')
         };
         
-        // Head slider listeners
-        headSliders.scaleX.addEventListener('input', (e) => { this.debugParams.head.scaleMultiplierX = parseFloat(e.target.value); headValues.scaleX.textContent = e.target.value; this.updateHeadTransform(); });
-        headSliders.scaleY.addEventListener('input', (e) => { this.debugParams.head.scaleMultiplierY = parseFloat(e.target.value); headValues.scaleY.textContent = e.target.value; this.updateHeadTransform(); });
-        headSliders.scaleZ.addEventListener('input', (e) => { this.debugParams.head.scaleMultiplierZ = parseFloat(e.target.value); headValues.scaleZ.textContent = e.target.value; this.updateHeadTransform(); });
-        headSliders.posX.addEventListener('input', (e) => { this.debugParams.head.posOffsetX = parseFloat(e.target.value); headValues.posX.textContent = e.target.value; this.updateHeadTransform(); });
-        headSliders.posY.addEventListener('input', (e) => { this.debugParams.head.posOffsetY = parseFloat(e.target.value); headValues.posY.textContent = e.target.value; this.updateHeadTransform(); });
-        headSliders.posZ.addEventListener('input', (e) => { this.debugParams.head.posOffsetZ = parseFloat(e.target.value); headValues.posZ.textContent = e.target.value; this.updateHeadTransform(); });
-        headSliders.rotX.addEventListener('input', (e) => { this.debugParams.head.rotationX = parseFloat(e.target.value); headValues.rotX.textContent = e.target.value + '°'; this.updateHeadTransform(); });
-        headSliders.rotY.addEventListener('input', (e) => { this.debugParams.head.rotationY = parseFloat(e.target.value); headValues.rotY.textContent = e.target.value + '°'; this.updateHeadTransform(); });
-        headSliders.rotZ.addEventListener('input', (e) => { this.debugParams.head.rotationZ = parseFloat(e.target.value); headValues.rotZ.textContent = e.target.value + '°'; this.updateHeadTransform(); });
-        headSliders.pushBack.addEventListener('input', (e) => { this.debugParams.head.pushBackFactor = parseFloat(e.target.value); headValues.pushBack.textContent = e.target.value; this.updateHeadTransform(); });
-        
         // Face slider listeners
         faceSliders.scaleX.addEventListener('input', (e) => { this.debugParams.face.scaleX = parseFloat(e.target.value); faceValues.scaleX.textContent = e.target.value; this.updateFaceTransform(); });
         faceSliders.scaleY.addEventListener('input', (e) => { this.debugParams.face.scaleY = parseFloat(e.target.value); faceValues.scaleY.textContent = e.target.value; this.updateFaceTransform(); });
@@ -228,35 +145,17 @@ class FaceToBlendshape3D {
         
         // Reset button
         document.getElementById('resetDebugBtn').addEventListener('click', () => {
-            // Reset head
-            headSliders.scaleX.value = 1.15; headSliders.scaleY.value = 1.45; headSliders.scaleZ.value = 1.45;
-            headSliders.posX.value = 0; headSliders.posY.value = 0; headSliders.posZ.value = 0;
-            headSliders.rotX.value = 0; headSliders.rotY.value = 0; headSliders.rotZ.value = 0;
-            headSliders.pushBack.value = 0.40;
             // Reset face
             faceSliders.scaleX.value = 1.0; faceSliders.scaleY.value = 1.0; faceSliders.scaleZ.value = 1.0;
             faceSliders.posX.value = 0; faceSliders.posY.value = 0; faceSliders.posZ.value = 0;
             faceSliders.rotX.value = 0; faceSliders.rotY.value = 0; faceSliders.rotZ.value = 0;
             // Trigger updates
-            Object.values(headSliders).forEach(s => s.dispatchEvent(new Event('input')));
             Object.values(faceSliders).forEach(s => s.dispatchEvent(new Event('input')));
         });
         
         // Copy button
         document.getElementById('copyValuesBtn').addEventListener('click', () => {
-            const text = `HEAD:
-scaleMultiplierX: ${this.debugParams.head.scaleMultiplierX}
-scaleMultiplierY: ${this.debugParams.head.scaleMultiplierY}
-scaleMultiplierZ: ${this.debugParams.head.scaleMultiplierZ}
-posOffsetX: ${this.debugParams.head.posOffsetX}
-posOffsetY: ${this.debugParams.head.posOffsetY}
-posOffsetZ: ${this.debugParams.head.posOffsetZ}
-rotationX: ${this.debugParams.head.rotationX}
-rotationY: ${this.debugParams.head.rotationY}
-rotationZ: ${this.debugParams.head.rotationZ}
-pushBackFactor: ${this.debugParams.head.pushBackFactor}
-
-FACE:
+            const text = `FACE:
 scaleX: ${this.debugParams.face.scaleX}
 scaleY: ${this.debugParams.face.scaleY}
 scaleZ: ${this.debugParams.face.scaleZ}
@@ -269,52 +168,6 @@ rotationZ: ${this.debugParams.face.rotationZ}`;
             navigator.clipboard.writeText(text);
             alert('Values copied to clipboard!');
         });
-    }
-    
-    updateHeadTransform() {
-        if (!this.headModel || !this.faceData) return;
-        
-        const { faceWidth, faceHeight, faceCenter } = this.faceData;
-        
-        this.headModel.scale.set(1, 1, 1);
-        this.headModel.rotation.set(0, 0, 0);
-        this.headModel.position.set(0, 0, 0);
-        this.headModel.updateMatrixWorld(true);
-        
-        const resetHeadBox = new THREE.Box3().setFromObject(this.headModel);
-        const headWidth = resetHeadBox.max.x - resetHeadBox.min.x;
-        const headHeight = resetHeadBox.max.y - resetHeadBox.min.y;
-        
-        const targetHeadWidth = faceWidth * this.debugParams.head.scaleMultiplierX;
-        const targetHeadHeight = faceHeight * this.debugParams.head.scaleMultiplierY;
-        
-        const scaleX = targetHeadWidth / headWidth;
-        const scaleY = targetHeadHeight / headHeight;
-        const scaleZ = Math.max(scaleX, scaleY) * (this.debugParams.head.scaleMultiplierZ / this.debugParams.head.scaleMultiplierY);
-        
-        this.headModel.scale.set(scaleX, scaleY, scaleZ);
-        
-        // Apply rotation (degrees to radians)
-        this.headModel.rotation.set(
-            THREE.MathUtils.degToRad(this.debugParams.head.rotationX),
-            THREE.MathUtils.degToRad(this.debugParams.head.rotationY),
-            THREE.MathUtils.degToRad(this.debugParams.head.rotationZ)
-        );
-        
-        this.headModel.updateMatrixWorld(true);
-        
-        const scaledHeadBox = new THREE.Box3().setFromObject(this.headModel);
-        const scaledHeadCenter = scaledHeadBox.getCenter(new THREE.Vector3());
-        const scaledHeadDepth = scaledHeadBox.max.z - scaledHeadBox.min.z;
-        
-        const offsetX = faceCenter.x - scaledHeadCenter.x + this.debugParams.head.posOffsetX;
-        const offsetY = faceCenter.y - scaledHeadCenter.y + this.debugParams.head.posOffsetY;
-        let targetZ = faceCenter.z - scaledHeadCenter.z;
-        const pushBack = scaledHeadDepth * this.debugParams.head.pushBackFactor;
-        const offsetZ = targetZ - pushBack + this.debugParams.head.posOffsetZ;
-        
-        this.headModel.position.set(offsetX, offsetY, offsetZ);
-        this.updateDebugDisplay();
     }
     
     updateFaceTransform() {
@@ -341,38 +194,12 @@ rotationZ: ${this.debugParams.face.rotationZ}`;
             originalPosition.z + this.debugParams.face.posOffsetZ
         );
         
-        // Recalculate face data after transform
-        this.faceMesh.geometry.computeBoundingBox();
-        const faceBox = new THREE.Box3().setFromObject(this.faceMesh);
-        const faceWidth = faceBox.max.x - faceBox.min.x;
-        const faceHeight = faceBox.max.y - faceBox.min.y;
-        const faceCenter = faceBox.getCenter(new THREE.Vector3());
-        
-        this.faceData.faceWidth = faceWidth;
-        this.faceData.faceHeight = faceHeight;
-        this.faceData.faceCenter = faceCenter;
-        
-        this.updateHeadTransform();
         this.updateDebugDisplay();
     }
     
     updateDebugDisplay() {
         const debugValues = document.getElementById('debugValues');
-        debugValues.textContent = `HEAD:
-{
-  scaleMultiplierX: ${this.debugParams.head.scaleMultiplierX},
-  scaleMultiplierY: ${this.debugParams.head.scaleMultiplierY},
-  scaleMultiplierZ: ${this.debugParams.head.scaleMultiplierZ},
-  posOffsetX: ${this.debugParams.head.posOffsetX},
-  posOffsetY: ${this.debugParams.head.posOffsetY},
-  posOffsetZ: ${this.debugParams.head.posOffsetZ},
-  rotationX: ${this.debugParams.head.rotationX},
-  rotationY: ${this.debugParams.head.rotationY},
-  rotationZ: ${this.debugParams.head.rotationZ},
-  pushBackFactor: ${this.debugParams.head.pushBackFactor}
-}
-
-FACE:
+        debugValues.textContent = `FACE:
 {
   scaleX: ${this.debugParams.face.scaleX},
   scaleY: ${this.debugParams.face.scaleY},
@@ -446,37 +273,9 @@ FACE:
             this.faceMesh.name = 'faceMesh';
             this.scene.add(this.faceMesh);
             
-            if (this.headModel) {
-                this.headModel.visible = true;
-                this.faceMesh.geometry.computeBoundingBox();
-                const faceBox = this.faceMesh.geometry.boundingBox;
-                const faceWidth = faceBox.max.x - faceBox.min.x;
-                const faceHeight = faceBox.max.y - faceBox.min.y;
-                const faceCenter = faceBox.getCenter(new THREE.Vector3());
-                const originalPosition = this.faceMesh.position.clone();
-                
-                const headBox = new THREE.Box3().setFromObject(this.headModel);
-                
-                this.faceData = { faceWidth, faceHeight, faceCenter, headBox, originalPosition };
-                
-                const skinColor = this.faceMesh.userData.skinColor;
-                if (skinColor) {
-                    this.headModel.traverse((child) => {
-                        if (child.isMesh) {
-                            const r = Math.max(skinColor.r * 1.2, 0.5);
-                            const g = Math.max(skinColor.g * 1.2, 0.4);
-                            const b = Math.max(skinColor.b * 1.2, 0.3);
-                            child.material.color.setRGB(r, g, b);
-                            child.material.emissive.setRGB(r * 0.3, g * 0.3, b * 0.3);
-                            child.material.needsUpdate = true;
-                        }
-                    });
-                }
-                
-                this.updateHeadTransform();
-                this.faceMesh.renderOrder = 2;
-                this.headModel.renderOrder = 1;
-            }
+            this.faceData = { originalPosition: this.faceMesh.position.clone() };
+            this.updateDebugDisplay();
+            this.faceMesh.renderOrder = 2;
             
             this.displayBlendshapes();
             document.getElementById('exportBtn').disabled = false;
